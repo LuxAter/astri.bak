@@ -12,7 +12,7 @@
   "build": "build",
   "astri.exe": {
     "path": "astri.exe",
-    "files": "$(SOURCE)/*.c",
+    "files": ["$(SOURCE)/*.c", "$(SOURCE)/*.cpp"],
     "type": "exe",
     "group": "main"
   }

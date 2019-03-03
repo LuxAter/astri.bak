@@ -67,7 +67,7 @@ uninstall: uninstall-astri.exe
 # ASTRI.EXE {{{
 
 ASTRI.EXE=astri.exe
-ASTRI.EXE_FILES=$(shell find "$(SOURCE)/" -name "*.c")
+ASTRI.EXE_FILES=$(shell find "$(SOURCE)/" -name "*.c") $(shell find "$(SOURCE)/" -name "*.cpp")
 ASTRI.EXE_OBJS=$(ASTRI.EXE_FILES:%=$(ROOT)/$(BUILD)/%.o)
 -include $(ASTRI.EXE_OBJS:.o=.d)
 
