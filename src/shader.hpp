@@ -5,6 +5,7 @@
 #include <string>
 
 #include "glad/glad.h"
+#include "glm/glm.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -18,6 +19,8 @@ class Shader {
   void set(const std::string& name, bool value) const;
   void set(const std::string& name, int value) const;
   void set(const std::string& name, float value) const;
+  void set(const std::string& name, glm::mat4 trans) const;
+  void set(const std::string& name, glm::vec3 trans) const;
 
   unsigned int ID;
 };

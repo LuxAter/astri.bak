@@ -10,7 +10,7 @@ CCIGNORE=
 CXXIGNORE=
 CCFLAGS=-fPIC -Wall -Wpedantic --static
 CXXFLAGS=-std=c++17 -fPIC -Wall -Wpedantic --static
-LINK=-lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl
+LINK=-lglfw3 -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lcurl
 SOURCE=src
 INCLUDE_DIR=include
 INCLUDE=
