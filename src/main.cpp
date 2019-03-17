@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <cmath>
+
 #include "colors.hpp"
 #include "data.hpp"
 #include "glad/glad.h"
@@ -17,9 +19,13 @@
 
 #include <GLFW/glfw3.h>
 
-astri::Object* obj = NULL;
+#define COUNT 1000
+
+astri::Object* earth = NULL;
+std::vector<astri::Object*> satellites;
 
 static int width_ = 500, height_ = 500;
+static double scaled_sec = 1.0;
 
 float frand() { return ((double)rand() / (RAND_MAX)); }
 
@@ -32,7 +38,17 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void process_input(GLFWwindow* window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
+  }else if(glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS){
+    scaled_sec = 1.0;
   }
+}
+
+glm::vec3 cartesian(const glm::vec3& polar) {
+  return glm::vec3(polar.x * std::sin(std::fmod(polar.y, 2.0 * M_PI)) *
+                       std::cos(std::fmod(-polar.z, 2.0 * M_PI)),
+                   polar.x * std::cos(std::fmod(polar.y, 2.0 * M_PI)),
+                   polar.x * std::sin(std::fmod(polar.y, 2.0 * M_PI)) *
+                       std::sin(std::fmod(-polar.z, 2.0 * M_PI)));
 }
 
 int main(int argc, char* argv[]) {
@@ -77,94 +93,107 @@ int main(int argc, char* argv[]) {
 
   glViewport(0, 0, 800, 600);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-  // --------------------------------------------------------------------------
 
   astri::Shader shader("shaders/vs.glsl", "shaders/fs.glsl");
 
-  // VBO
-  // --------------------------------------------------------------------------
-  // unsigned int VBO;
-  // unsigned int VAO;
-  // unsigned int EBO;
-  // glGenVertexArrays(1, &VAO);
-  // glGenBuffers(1, &VBO);
-  // glGenBuffers(1, &EBO);
-  //
-  // glBindVertexArray(VAO);
-  //
-  // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  // glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-  //
-  // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-  //              GL_STATIC_DRAW);
-  //
-  // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
-  // (void*)0); glEnableVertexAttribArray(0); glVertexAttribPointer(1, 3,
-  // GL_FLOAT, GL_FALSE, 9 * sizeof(float),
-  //                       (void*)(3 * sizeof(float)));
-  // glEnableVertexAttribArray(1);
-  // glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
-  //                       (void*)(6 * sizeof(float)));
-  // glEnableVertexAttribArray(2);
-  // --------------------------------------------------------------------------
-
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   srand(time(NULL));
 
-  obj = new astri::Object(&shader);
-
   glEnable(GL_DEPTH_TEST);
 
+  glm::vec3 view_pos = glm::vec3(0.0, 0.0, 3.0f);
   glm::mat4 view = glm::mat4(1.0f);
-  view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f));
+  view = glm::translate(view, -view_pos);
 
   glm::mat4 projection;
   projection = glm::perspective(glm::radians(45.0f),
                                 (float)width_ / (float)height_, 0.1f, 100.0f);
 
-  for (int i = 0; i < 10; ++i) {
-    obj->add_instance();
-    glm::vec3 pos(2 * (frand() - 0.5), 2 * (frand() - 0.5),
-                  2 * (frand() - 0.5));
-    obj->back().first = glm::translate(obj->back().first, pos);
-    float v = frand();
-    obj->back().first = glm::scale(obj->back().first, glm::vec3(v, v, v));
-    obj->back().second = glm::vec3(frand(), frand(), frand());
+  earth = new astri::Object(&shader, 1.0, 2);
+  earth->add_instance();
+  earth->set_color(144, 164, 174);
+  // earth->back() = glm::rotate(earth->back(), (float)(M_PI/2.0),
+  // glm::vec3(1.0, 0.0, 0.0));
+
+  satellites.push_back(new astri::Object(&shader, 0.01, 0));
+  satellites.back()->set_color(76, 175, 80);
+  satellites.push_back(new astri::Object(&shader, 0.01, 0));
+  satellites.back()->set_color(33, 150, 243);
+  satellites.push_back(new astri::Object(&shader, 0.01, 0));
+  satellites.back()->set_color(244, 67, 54);
+  satellites.push_back(new astri::Object(&shader, 0.01, 0));
+  satellites.back()->set_color(255, 193, 7);
+
+  std::vector<std::vector<std::array<double, 3>>> factors(satellites.size());
+
+  for (int i = 0; i < COUNT; ++i) {
+    for (int j = 0; j < satellites.size(); ++j) {
+      satellites[j]->add_instance();
+      factors[j].push_back(
+          {{frand() + 1.0, (frand() + 1.0) * 1e-2, (frand() + 1.0) * 1e-2}});
+    }
   }
-  // std::vector<glm::vec3> colors;
-  // for (int i = 0; i < 10; ++i) {
-  //   colors.push_back(glm::vec3(frand(), frand(), frand()));
-  // }
+
+  double g_time = 0.0;
+
+  glm::vec3 sph(1.2, M_PI / 2.0, 0.0);
+
+  shader.use();
+  shader.set("uLightPos", glm::vec3(-100.0, 0.0, 50.0));
+  shader.set("uLightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+  shader.set("uView", view);
+  shader.set("uProjection", projection);
+  shader.set("uViewPos", view_pos);
 
   while (!glfwWindowShouldClose(window)) {
     // input
     process_input(window);
+    if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
+      scaled_sec +=
+          std::max(5.0,
+                   std::pow(3.0, std::floor(std::log(std::fabs(scaled_sec))))) /
+          60.0;
+      astri::Info("dT=%lf", scaled_sec);
+    } else if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
+      scaled_sec -=
+          std::max(5.0,
+                   std::pow(3.0, std::floor(std::log(std::fabs(scaled_sec))))) /
+          60.0;
+    }
 
     // rendering
     glClearColor(0.149f, 0.196f, 0.219f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    shader.use();
-    shader.set("view", view);
-    shader.set("projection", projection);
-    obj->draw();
-    // glBindVertexArray(VAO);
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    // shader.set("uLightPos", glm::vec3(100.0 * std::sin(1e-4 * g_time),
+    //                                   100.0 * std::cos(1e-4 * g_time), 0.0));
+    earth->back() = glm::rotate(glm::mat4(1.0f), (float)(7.29211e-5 * g_time),
+                                glm::vec3(0.0, 1.0, 0.0));
+    // earth->back() = glm::translate(glm::mat4(1.0f), glm::vec3(std::sin(1e-5*g_time), 0.0, std::cos(1e-5*g_time)));
+    earth->draw();
+
+    for (int i = 0; i < COUNT; ++i) {
+      for (int j = 0; j < satellites.size(); ++j) {
+        sph.z = (float)(factors[j][i][0]);
+        sph.y = (float)(factors[j][i][1] * g_time);
+        sph.z = (float)(factors[j][i][2] * g_time);
+        satellites[j]->at(i) = glm::translate(glm::mat4(1.0),
+        cartesian(sph));
+      }
+    }
+    for (auto& sat : satellites) {
+      sat->draw();
+    }
 
     // swap buffers
     glfwSwapBuffers(window);
     glfwPollEvents();
+    g_time += (scaled_sec / 60.0);
   }
 
-  free(obj);
+  free(earth);
 
-  // glDeleteVertexArrays(1, &VAO);
-  // glDeleteBuffers(1, &VBO);
-  //
   glfwDestroyWindow(window);
   glfwTerminate();
   return 0;

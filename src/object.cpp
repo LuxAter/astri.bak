@@ -8,6 +8,7 @@
 
 #include "glad/glad.h"
 #include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 astri::Object::Object(Shader* shader, float radius, unsigned sub)
     : radius_(radius), sub_(sub), shader_(shader) {
@@ -16,15 +17,25 @@ astri::Object::Object(Shader* shader, float radius, unsigned sub)
 
 void astri::Object::draw() const {
   glBindVertexArray(VAO);
+  shader_->set("uColor", glm::vec3(red_, green_, blue_));
   for(std::size_t i = 0; i < instances.size(); ++i){
-    shader_->set("model", instances[i].first);
-    shader_->set("uColor", instances[i].second);
+    shader_->set("uModel", instances[i]);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
   }
 }
 
 void astri::Object::add_instance(){
-  instances.push_back(std::make_pair(glm::mat4(1.0), glm::vec3(1.0)));
+  instances.push_back(glm::mat4(1.0));
+}
+void astri::Object::set_color(int r, int g, int b){
+  red_ = r / 255.0;
+  green_ = g / 255.0;
+  blue_ = b / 255.0;
+}
+void astri::Object::set_color(float r, float g, float b){
+  red_ = r;
+  green_ = g;
+  blue_ = b;
 }
 
 std::vector<float> astri::Object::compute_vertices() {
@@ -64,17 +75,11 @@ std::vector<float> astri::Object::compute_vertices() {
 }
 
 void astri::Object::gen_vertices() {
-  // const float s_step = 186.0 / 2048.0;
-  // const float t_step = 322.0 / 1024.0;
-
   std::vector<float> tmp_vert = compute_vertices();
 
   vertices.clear();
   normals.clear();
   indices.clear();
-  // std::vector<float>().swap(vertices);
-  // std::vector<float>().swap(normals);
-  // std::vector<unsigned>().swap(indices);
 
   const float *v0, *v1, *v2, *v3, *v4, *v11;
   float n[3];
@@ -102,8 +107,8 @@ void astri::Object::gen_vertices() {
     add_normals(n, n, n);
     add_indices(index, index + 1, index + 2);
 
-    compute_face_normal(v1, v2, v3, n);
-    add_vertices(v1, v2, v3);
+    compute_face_normal(v1, v3, v2, n);
+    add_vertices(v1, v3, v2);
     add_normals(n, n, n);
     add_indices(index + 3, index + 4, index + 5);
 
@@ -182,10 +187,13 @@ void astri::Object::build_interleaved() {
 
   std::size_t i, j;
   std::size_t count = vertices.size();
+  glm::mat4 rot = glm::rotate(glm::mat4(1.0), (float)(M_PI/2.0), glm::vec3(1.0, 0.0, 0.0));
   for (i = 0, j = 0; i < count; i += 3, j += 2) {
-    interleaved.push_back(vertices[i]);
-    interleaved.push_back(vertices[i + 1]);
-    interleaved.push_back(vertices[i + 2]);
+    // glm::vec3 v = rot * glm::vec4(vertices[i], vertices[i+1], vertices[i+2], 1.0);
+    glm::vec3 v = glm::vec4(vertices[i], vertices[i+1], vertices[i+2], 1.0);
+    interleaved.push_back(v.x);
+    interleaved.push_back(v.y);
+    interleaved.push_back(v.z);
     interleaved.push_back(normals[i]);
     interleaved.push_back(normals[i + 1]);
     interleaved.push_back(normals[i + 2]);

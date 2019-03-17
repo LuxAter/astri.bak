@@ -16,10 +16,15 @@ class Object {
   void draw() const;
 
   void add_instance();
+  void set_color(int r, int g, int b);
+  void set_color(float r, float g, float b);
 
-  inline std::pair<glm::mat4, glm::vec3>& front() { return instances.front(); }
-  inline std::pair<glm::mat4, glm::vec3>& back() { return instances.back(); }
-  inline std::pair<glm::mat4, glm::vec3>& operator[](std::size_t i) {
+  inline glm::mat4& front() { return instances.front(); }
+  inline glm::mat4& back() { return instances.back(); }
+  inline glm::mat4& at(std::size_t i) {
+    return instances[i];
+  }
+  inline glm::mat4& operator[](std::size_t i) {
     return instances[i];
   }
 
@@ -45,6 +50,8 @@ class Object {
   float radius_;
   unsigned sub_;
 
+  float red_=1.0, green_=1.0, blue_ = 1.0;
+
   unsigned VBO, VAO, EBO;
 
   std::vector<float> vertices;
@@ -52,7 +59,7 @@ class Object {
   std::vector<unsigned> indices;
 
   std::vector<float> interleaved;
-  std::vector<std::pair<glm::mat4, glm::vec3>> instances;
+  std::vector<glm::mat4> instances;
 
   const Shader* shader_;
 };
