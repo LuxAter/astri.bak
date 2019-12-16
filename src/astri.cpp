@@ -14,18 +14,8 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "log.hpp"
-#include "stb_image_write.h"
 
 static int width_ = 500, height_ = 500;
-
-bool ends_with(std::string const& fullString, std::string const& ending) {
-  if (fullString.length() >= ending.length()) {
-    return (0 == fullString.compare(fullString.length() - ending.length(),
-                                    ending.length(), ending));
-  } else {
-    return false;
-  }
-}
 
 void glfw_error_callback(int error_code, const char* description) {
   error("GLFW [{}]: {}", error_code, description);
@@ -34,27 +24,6 @@ void glfw_framebuffer_size_callback(GLFWwindow*, int w, int h) {
   width_ = w;
   height_ = h;
   glViewport(0, 0, width_, height_);
-}
-
-bool write_image(const std::string& file_path, std::uint8_t* pixmap) {
-  LINFO("Writing image to \"{}\"", file_path);
-  bool ret = false;
-  stbi_flip_vertically_on_write(true);
-  if (ends_with(file_path, ".png")) {
-    ret = (stbi_write_png(file_path.c_str(), width_ + 1, height_ - 1, 3, pixmap,
-                          sizeof(uint8_t) * width_ * 3) != 0);
-  } else if (ends_with(file_path, ".bmp")) {
-    ret = (stbi_write_bmp(file_path.c_str(), width_ + 1, height_ - 1, 3,
-                          pixmap) != 0);
-  } else if (ends_with(file_path, ".tga")) {
-    ret = (stbi_write_tga(file_path.c_str(), width_ + 1, height_ - 1, 3,
-                          pixmap) != 0);
-  } else if (ends_with(file_path, ".jpg")) {
-    ret = (stbi_write_jpg(file_path.c_str(), width_ + 1, height_ - 1, 3, pixmap,
-                          75) != 0);
-  }
-  free(pixmap);
-  return ret;
 }
 
 int main(int argc, char* argv[]) {
@@ -131,14 +100,9 @@ int main(int argc, char* argv[]) {
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init("#version 330");
 
+  bool hide_menu = false;
   bool config_window = false;
   bool debug_window = false;
-  bool save_window = false;
-
-  char file_buff[255] = "";
-  std::string save_window_err = "";
-  const char* file_ext[] = {".png", ".bmp", "tga", "jpg"};
-  static int file_ext_current = 0;
 
   auto start_time = std::chrono::high_resolution_clock::now();
   std::size_t frame_count = 0;
@@ -146,34 +110,58 @@ int main(int argc, char* argv[]) {
   float fps_sample_rate = 100.0f;
   float fps_history_length = 10.0;
 
+  int key_delay = 0;
+
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
+
+    if (key_delay <= 0 && glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS &&
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+      debug_window = !debug_window;
+      key_delay = 10;
+    }
+    if (key_delay <= 0 && glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS &&
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+      config_window = !config_window;
+      key_delay = 10;
+    }
+    if (key_delay <= 0 && glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS &&
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+      hide_menu = !hide_menu;
+      key_delay = 10;
+    }
+    if (key_delay <= 0 && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+      glfwSetWindowShouldClose(window, GLFW_TRUE);
+      key_delay = 10;
+    }
+    if (key_delay > 0) {
+      key_delay--;
+    }
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
-    if (ImGui::BeginMainMenuBar()) {
-      if (ImGui::BeginMenu("Capture")) {
-        if (ImGui::MenuItem("Save", "Ctrl+S")) {
-          save_window = true;
+    if (!hide_menu) {
+      if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("Open")) {
+          if (ImGui::MenuItem("Hide", "Ctrl+H")) {
+            hide_menu = !hide_menu;
+          }
+          if (ImGui::MenuItem("Config", "Ctrl+C")) {
+            config_window = !config_window;
+          }
+          if (ImGui::MenuItem("Debug", "Ctrl+D")) {
+            debug_window = !debug_window;
+          }
+          ImGui::EndMenu();
         }
-        ImGui::EndMenu();
-      }
-      if (ImGui::BeginMenu("Open")) {
-        if (ImGui::MenuItem("Config", "Ctrl+C")) {
-          config_window = !config_window;
+        ImGui::Separator();
+        if (ImGui::MenuItem("Quit", "Esc")) {
+          glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
-        if (ImGui::MenuItem("Debug", "Ctrl+D")) {
-          debug_window = !debug_window;
-        }
-        ImGui::EndMenu();
+        ImGui::EndMainMenuBar();
       }
-      ImGui::Separator();
-      if (ImGui::MenuItem("Quit", "Esc")) {
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-      }
-      ImGui::EndMainMenuBar();
     }
     if (config_window) {
       if (ImGui::Begin("Config", &config_window, 0)) {
@@ -191,41 +179,11 @@ int main(int argc, char* argv[]) {
       if (ImGui::Begin("Debug", &debug_window, 0)) {
         ImGui::PlotLines("FPS", fps_history.data(), fps_history.size(), 0, NULL,
                          FLT_MAX, FLT_MAX, ImVec2(0, 50));
-        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.4);
+        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.3);
         ImGui::SliderFloat("FPS Rate", &fps_sample_rate, 1000.0f, 10.0f);
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.4);
+        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.3);
         ImGui::SliderFloat("FPS History", &fps_history_length, 1.0f, 120.0f);
-      }
-      ImGui::End();
-    }
-    if (save_window) {
-      ImGui::SetNextWindowSize(ImVec2(width_ * 0.6, 100));
-      if (ImGui::Begin("Save", &save_window, ImGuiWindowFlags_NoResize)) {
-        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.4);
-        ImGui::InputTextWithHint("File", "File name", file_buff,
-                                 IM_ARRAYSIZE(file_buff));
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.1);
-        ImGui::Combo("", &file_ext_current, file_ext, IM_ARRAYSIZE(file_ext));
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.1);
-        if (ImGui::Button("Save")) {
-          std::uint8_t* pixmap =
-              (std::uint8_t*)(malloc(sizeof(uint8_t) * width_ * height_ * 3));
-          glReadPixels(0, 0, width_, height_, GL_RGB, GL_UNSIGNED_BYTE, pixmap);
-          if (write_image(std::string(file_buff) + file_ext[file_ext_current],
-                          pixmap)) {
-            save_window = false;
-          } else {
-            save_window_err =
-                "Failed to write image to file. Could not open file";
-          }
-        }
-        if (save_window_err.size() != 0) {
-          ImGui::TextColored(ImVec4(0.956f, 0.262f, 0.211f, 1.0f),
-                             save_window_err.c_str());
-        }
       }
       ImGui::End();
     }
@@ -234,6 +192,7 @@ int main(int argc, char* argv[]) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(window);
+
     if (std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - start_time)
             .count() >= fps_sample_rate) {
