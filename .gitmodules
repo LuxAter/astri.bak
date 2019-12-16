@@ -1,0 +1,18 @@
+[submodule "external/glfw"]
+	path = external/glfw
+	url = https://github.com/glfw/glfw
+[submodule "external/spdlog"]
+	path = external/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "external/glm"]
+	path = external/glm
+	url = https://github.com/g-truc/glm
+[submodule "external/CLI11"]
+	path = external/CLI11
+	url = https://github.com/CLIUtils/CLI11
+[submodule "external/curl"]
+	path = external/curl
+	url = https://github.com/curl/curl
+[submodule "external/imgui"]
+	path = external/imgui
+	url = https://github.com/ocornut/imgui

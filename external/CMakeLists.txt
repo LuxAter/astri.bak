@@ -1,0 +1,36 @@
+macro(LOAD_EXTERNAL REPO_NAME)
+  string(TOUPPER ${REPO_NAME} MODULE_NAME)
+  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/REPO_NAME}/.git)
+    execute_process(
+      COMMAND git submodule update --init --
+      ${CMAKE_CURRENT_SOURCE_DIR}/${REPO_NAME}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    set(${MODULE_NAME}_FOUND TRUE)
+  elseif(NOT GIT_FOUND)
+    message(FATAL_ERROR "Git is required to clone ${MODULE_NAME}")
+  else()
+    set(${MODULE_NAME}_FOUND TRUE)
+  endif()
+endmacro()
+
+macro(install)
+
+endmacro()
+
+load_external(glfw)
+option(GLFW_BUILD_EXAMPLES "" OFF)
+option(GLFW_BUILD_TESTS "" OFF)
+option(GLFW_BUILD_DOCS "" OFF)
+option(GLFW_INSTALL "" OFF)
+option(GLFW_VULKAN_STATIC "" OFF)
+load_external(spdlog)
+option(SPDLOG_BUILD_SHARED "" ${BUILD_SHARED_LIBS})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/spdlog EXCLUDE_FROM_ALL)
+load_external(CLI11)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/CLI11 EXCLUDE_FROM_ALL)
+option(BUILD_STATIC_LIBS "" ON)
+load_external(glm)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/glm EXCLUDE_FROM_ALL)
+load_external(curl)
+option(BUILD_CURL_EXE "" OFF)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl EXCLUDE_FROM_ALL)
