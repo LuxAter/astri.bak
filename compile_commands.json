@@ -31,6 +31,16 @@
 },
 {
   "directory": "/home/arden/programming/Astri/build",
+  "command": "/sbin/c++  -DDEBUG -DSPDLOG_COMPILED_LIB -I/home/arden/programming/Astri/include -I/home/arden/programming/Astri/external/curl/include -I/home/arden/programming/Astri/external/CLI11/include -I/home/arden/programming/Astri/external/spdlog/include -I/home/arden/programming/Astri/external/glm/glm/..  -g   -Wall -Wextra -O0 -std=gnu++17 -o CMakeFiles/Astri.dir/src/globals.cpp.o -c /home/arden/programming/Astri/src/globals.cpp",
+  "file": "/home/arden/programming/Astri/src/globals.cpp"
+},
+{
+  "directory": "/home/arden/programming/Astri/build",
+  "command": "/sbin/c++  -DDEBUG -DSPDLOG_COMPILED_LIB -I/home/arden/programming/Astri/include -I/home/arden/programming/Astri/external/curl/include -I/home/arden/programming/Astri/external/CLI11/include -I/home/arden/programming/Astri/external/spdlog/include -I/home/arden/programming/Astri/external/glm/glm/..  -g   -Wall -Wextra -O0 -std=gnu++17 -o CMakeFiles/Astri.dir/src/ui.cpp.o -c /home/arden/programming/Astri/src/ui.cpp",
+  "file": "/home/arden/programming/Astri/src/ui.cpp"
+},
+{
+  "directory": "/home/arden/programming/Astri/build",
   "command": "/sbin/c++  -DDEBUG -DSPDLOG_COMPILED_LIB -I/home/arden/programming/Astri/include -I/home/arden/programming/Astri/external/curl/include -I/home/arden/programming/Astri/external/CLI11/include -I/home/arden/programming/Astri/external/spdlog/include -I/home/arden/programming/Astri/external/glm/glm/..  -g   -Wall -Wextra -O0 -std=gnu++17 -o CMakeFiles/Astri.dir/src/imgui/imgui.cpp.o -c /home/arden/programming/Astri/src/imgui/imgui.cpp",
   "file": "/home/arden/programming/Astri/src/imgui/imgui.cpp"
 },

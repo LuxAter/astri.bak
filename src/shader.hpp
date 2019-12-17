@@ -2,15 +2,14 @@
 #define SHADER_HPP_80PHQYK7
 
 #include <fstream>
+#include <glm/glm.hpp>
 #include <string>
 
 #include "gl.h"
-#include <glm/glm.hpp>
-
-#include <GLFW/glfw3.h>
 
 class Shader {
  public:
+  Shader() {}
   Shader(const std::string& vertex_path, const std::string& fragment_path);
 
   void use();
