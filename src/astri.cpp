@@ -14,8 +14,38 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "log.hpp"
+#include "shader.hpp"
+#include "stb_image_write.h"
+#include "icosasphere.hpp"
 
 static int width_ = 500, height_ = 500;
+
+bool ends_with(std::string const& fullString, std::string const& ending) {
+  if (fullString.length() >= ending.length()) {
+    return (0 == fullString.compare(fullString.length() - ending.length(),
+                                    ending.length(), ending));
+  } else {
+    return false;
+  }
+}
+
+bool write_image(const std::string& file_path, std::uint8_t* pixmap) {
+  LINFO("Writing image to \"{}\"", file_path);
+  bool ret = false;
+  stbi_flip_vertically_on_write(true);
+  if (ends_with(file_path, ".png")) {
+    ret = (stbi_write_png(file_path.c_str(), width_, height_, 3, pixmap,
+                          sizeof(std::uint8_t) * width_ * 3) != 0);
+  } else if (ends_with(file_path, ".bmp")) {
+    ret = (stbi_write_bmp(file_path.c_str(), width_, height_, 3, pixmap) != 0);
+  } else if (ends_with(file_path, ".tga")) {
+    ret = (stbi_write_tga(file_path.c_str(), width_, height_, 3, pixmap) != 0);
+  } else if (ends_with(file_path, ".jpg")) {
+    ret = (stbi_write_jpg(file_path.c_str(), width_, height_, 3, pixmap, 75) !=
+           0);
+  }
+  return ret;
+}
 
 void glfw_error_callback(int error_code, const char* description) {
   error("GLFW [{}]: {}", error_code, description);
@@ -27,16 +57,14 @@ void glfw_framebuffer_size_callback(GLFWwindow*, int w, int h) {
 }
 
 int main(int argc, char* argv[]) {
-  bool fullscreen, floating;
-  glm::vec3 background;
-  std::array<float, 3> background_{0.149f, 0.196f, 0.219f};
+  bool fullscreen = false, floating = false;
+  glm::vec3 background(0.149f, 0.196f, 0.219f);
 
   CLI::App app{"Astri"};
   app.add_flag("--fullscreen", fullscreen, "Enables fullscreen window");
   app.add_flag("--floating", floating, "Enables floating window");
   app.add_option("--width", width_, "Width of window in pixels");
   app.add_option("--height", height_, "Height of window in pixels");
-  app.add_option("--bg", background_, "Background color");
 
   try {
     app.parse(argc, argv);
@@ -47,8 +75,6 @@ int main(int argc, char* argv[]) {
     app.exit(e);
     return -1;
   }
-
-  background = {background_[0], background_[1], background_[2]};
 
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) {
@@ -89,6 +115,9 @@ int main(int argc, char* argv[]) {
   glViewport(0, 0, width_, height_);
   glfwSetFramebufferSizeCallback(window, glfw_framebuffer_size_callback);
   glClearColor(background.r, background.g, background.b, 1.0f);
+  glEnable(GL_DEPTH_TEST);
+
+  srand(time(NULL));
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -100,9 +129,37 @@ int main(int argc, char* argv[]) {
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init("#version 330");
 
+  Shader object_shader("resources/vertex.glsl", "resources/fragment.glsl");
+  glm::vec3 light_color(1.0);
+  glm::vec3 view_pos(0.0, 0.0, 10.0);
+  glm::vec3 view_dir(0.0, 0.0, -1.0);
+  glm::vec3 view_up(0.0, 1.0, 0.0);
+  glm::mat4 view = glm::lookAt(view_pos, view_pos + view_dir, view_up);
+  glm::mat4 projection = glm::perspective(
+      glm::radians(45.0f), (float)width_ / (float)height_, 0.1f, 100.0f);
+  object_shader.use();
+  object_shader.set("uLightPos", glm::vec3(10.0, 0.0, 0.0));
+  object_shader.set("uLightColor", light_color);
+  object_shader.set("uView", view);
+  object_shader.set("uProjection", projection);
+  object_shader.set("uModel", glm::mat4(1.0f));
+  object_shader.set("uColor", glm::vec3(1.0, 1.0, 1.0));
+  object_shader.set("uViewPos", view_pos);
+
+  IcosaSphere sun(1.0, 3);
+  sun.add_instance();
+  sun.set_color(255, 255, 255);
+
+
   bool hide_menu = false;
   bool config_window = false;
   bool debug_window = false;
+
+  char file_fmt[255] = "%04d";
+  const char* file_ext[] = {".png", ".bmp", "tga", "jpg"};
+  static int file_ext_current = 0;
+
+  std::uint8_t capture = 0;
 
   auto start_time = std::chrono::high_resolution_clock::now();
   std::size_t frame_count = 0;
@@ -130,6 +187,11 @@ int main(int argc, char* argv[]) {
       hide_menu = !hide_menu;
       key_delay = 10;
     }
+    if (key_delay <= 0 && glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS &&
+        glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) {
+      capture = 2;
+      key_delay = 10;
+    }
     if (key_delay <= 0 && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
       key_delay = 10;
@@ -138,11 +200,11 @@ int main(int argc, char* argv[]) {
       key_delay--;
     }
 
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
-    if (!hide_menu) {
+    if (!hide_menu && capture == 0) {
       if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Open")) {
           if (ImGui::MenuItem("Hide", "Ctrl+H")) {
@@ -154,6 +216,9 @@ int main(int argc, char* argv[]) {
           if (ImGui::MenuItem("Debug", "Ctrl+D")) {
             debug_window = !debug_window;
           }
+          if (ImGui::MenuItem("ScreenShot", "Ctrl+S")) {
+            capture = 2;
+          }
           ImGui::EndMenu();
         }
         ImGui::Separator();
@@ -163,7 +228,7 @@ int main(int argc, char* argv[]) {
         ImGui::EndMainMenuBar();
       }
     }
-    if (config_window) {
+    if (config_window && capture == 0) {
       if (ImGui::Begin("Config", &config_window, 0)) {
         if (ImGui::CollapsingHeader("Colors")) {
           if (ImGui::ColorEdit3("Background", glm::value_ptr(background))) {
@@ -171,11 +236,22 @@ int main(int argc, char* argv[]) {
           }
           if (ImGui::ColorEdit4("Text", (float*)&style.Colors[0])) {
           }
+          if (ImGui::ColorEdit3("Light", glm::value_ptr(light_color))) {
+            object_shader.set("uLightColor", light_color);
+          }
+        }
+        if (ImGui::CollapsingHeader("Screenshot")) {
+          ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.5);
+          ImGui::InputTextWithHint("", "File format", file_fmt,
+                                   IM_ARRAYSIZE(file_fmt));
+          ImGui::SameLine();
+          ImGui::SetNextItemWidth(ImGui::GetWindowWidth() * 0.2);
+          ImGui::Combo("", &file_ext_current, file_ext, IM_ARRAYSIZE(file_ext));
         }
       }
       ImGui::End();
     }
-    if (debug_window) {
+    if (debug_window && capture == 0) {
       if (ImGui::Begin("Debug", &debug_window, 0)) {
         ImGui::PlotLines("FPS", fps_history.data(), fps_history.size(), 0, NULL,
                          FLT_MAX, FLT_MAX, ImVec2(0, 50));
@@ -190,7 +266,26 @@ int main(int argc, char* argv[]) {
 
     ImGui::Render();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // RENDERING GOES HERE
+    sun.draw();
+
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    if (capture == 1) {
+      glfwGetFramebufferSize(window, &width_, &height_);
+      GLubyte* framebuffer =
+          (GLubyte*)(malloc(sizeof(GLubyte) * width_ * height_ * 3));
+      glReadPixels(0, 0, width_, height_, GL_RGB, GL_UNSIGNED_BYTE,
+                   framebuffer);
+      char file_buffer[255] = "";
+      snprintf(file_buffer, 255, file_fmt, rand() % 1000);
+      write_image(std::string(file_buffer) + file_ext[file_ext_current],
+                  framebuffer);
+      free(framebuffer);
+      capture = 0;
+    } else if (capture > 1) {
+      capture--;
+    }
     glfwSwapBuffers(window);
 
     if (std::chrono::duration_cast<std::chrono::milliseconds>(

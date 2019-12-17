@@ -12,7 +12,7 @@ option(STATIC_ANALYSIS "Enable static analysis" FALSE)
 # ##############################################################################
 # SOURCE
 # ##############################################################################
-set(SOURCE src/astri.cpp src/glad.c src/stb_image_write.c src/log.cpp
+set(SOURCE src/astri.cpp src/glad.c src/stb_image_write.c src/log.cpp src/icosasphere.cpp src/shader.cpp
   src/imgui/imgui.cpp src/imgui/imgui_draw.cpp src/imgui/imgui_impl_glfw.cpp src/imgui/imgui_impl_opengl3.cpp src/imgui/imgui_widgets.cpp)
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
